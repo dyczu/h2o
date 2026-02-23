@@ -296,9 +296,21 @@ nav {
 }
 
 .cape-thumb {
-  width:60px; height:30px; border-radius:4px 4px 6px 6px;
-  margin:0 auto 16px; animation:capewave 2s ease-in-out infinite;
-  transform-origin:top center; border-top:3px solid rgba(255,255,255,0.12);
+  width:120px; height:60px;
+  margin:0 auto 16px;
+  transform-origin:top center;
+  overflow:hidden; position:relative; flex-shrink:0;
+  background:#000;
+  border-radius:4px;
+}
+.cape-thumb canvas {
+  display:block;
+  image-rendering:pixelated;
+  image-rendering:-moz-crisp-edges;
+  width:120px; height:60px;
+}
+.cape-thumb-solid {
+  width:120px; height:60px;
 }
 
 .cape-card h4 { font-family:'Syne',sans-serif; font-weight:700; font-size:14px; color:var(--white); margin-bottom:4px; }
@@ -474,9 +486,9 @@ nav {
 }
 .comm-cape-card:hover { border-color:var(--cyan); transform:translateY(-3px); }
 .comm-cape-thumb {
-  width:56px; height:28px; border-radius:3px 3px 5px 5px;
+  width:56px; height:84px; border-radius:3px 3px 5px 5px;
   margin:0 auto 12px; animation:capewave 2s ease-in-out infinite;
-  transform-origin:top center; border-top:2px solid rgba(255,255,255,0.1);
+  transform-origin:top center; overflow:hidden;
 }
 .comm-cape-name { font-family:'Syne',sans-serif; font-weight:700; font-size:13px; color:var(--white); margin-bottom:3px; }
 .comm-cape-owner { font-size:11px; color:var(--cyan); font-family:'DM Mono',monospace; }
@@ -650,6 +662,9 @@ code { color:var(--cyan); font-family:'DM Mono',monospace; font-size:13px; }
       <div class="dash-section active" id="section-capes">
         <div class="section-hdr">
           <div><h2>Galeria peleryn</h2><p>Kliknij na pelerynę aby ją aktywować. Tylko jedna może być aktywna.</p></div>
+          <button class="btn btn-cyan" onclick="openInlineUpload()" id="add-cape-btn" style="display:flex;align-items:center;gap:8px;white-space:nowrap;">
+            <span style="font-size:20px;line-height:1;">+</span> Dodaj pelerynę
+          </button>
         </div>
         <div class="active-cape-bar">
           <div class="acb-icon">🌊</div>
@@ -664,20 +679,20 @@ code { color:var(--cyan); font-family:'DM Mono',monospace; font-size:13px; }
       <!-- UPLOAD -->
       <div class="dash-section" id="section-upload">
         <div class="section-hdr">
-          <div><h2>Dodaj pelerynę</h2><p>Uploaduj własny design. Plik PNG/GIF w formacie 2:1.</p></div>
+          <div><h2>Dodaj pelerynę</h2><p>Uploaduj własny design. PNG lub GIF.</p></div>
         </div>
-        <div class="format-note">📐 Wymagany format: szerokość × 2 = wysokość · np. 64×32 · 128×64 · 256×128</div>
         <div class="upload-box" id="upload-box">
           <input type="file" id="cape-file" accept="image/png,image/gif" onchange="handleFileSelect(event)">
           <div class="upload-icon">🎨</div>
           <h3>Przeciągnij plik tutaj</h3>
-          <p>PNG lub GIF · Format 2:1 · Max 2MB</p>
+          <p>PNG lub GIF · Max 2MB</p>
         </div>
         <div class="upload-preview" id="upload-preview">
           <img class="preview-img" id="preview-img" src="" alt="Podgląd">
           <div id="preview-info" style="font-size:13px;color:var(--cyan);margin-bottom:12px;font-family:'DM Mono',monospace;text-align:center;"></div>
           <input class="txt-input" id="cape-name-inp" type="text" placeholder="Nazwa peleryny (np. Ocean Storm)">
-          <button class="btn btn-cyan" style="width:100%;padding:13px;font-size:16px;border-radius:10px;" onclick="saveCape()">Zapisz pelerynę ✓</button>
+          <div id="upload-gh-status" style="font-size:13px;color:var(--muted);margin-bottom:8px;font-family:'DM Mono',monospace;"></div>
+          <button class="btn btn-cyan" style="width:100%;padding:13px;font-size:16px;border-radius:10px;" onclick="saveCape()" id="save-cape-btn">Zapisz i uploaduj do GitHub 🚀</button>
         </div>
       </div>
 
@@ -746,6 +761,39 @@ code { color:var(--cyan); font-family:'DM Mono',monospace; font-size:13px; }
   </div>
 </div>
 
+<!-- INLINE UPLOAD MODAL -->
+<div id="upload-modal" style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,0.7);backdrop-filter:blur(6px);align-items:center;justify-content:center;padding:24px;">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:20px;padding:40px;width:100%;max-width:480px;position:relative;">
+    <button onclick="closeInlineUpload()" style="position:absolute;top:16px;right:16px;background:none;border:none;color:var(--muted);font-size:22px;cursor:pointer;line-height:1;">✕</button>
+    <div style="font-family:'Syne',sans-serif;font-weight:800;font-size:20px;color:var(--white);margin-bottom:6px;">Dodaj pelerynę</div>
+    <div style="color:var(--muted);font-size:14px;margin-bottom:24px;">PNG lub GIF</div>
+
+    <div class="upload-box" id="modal-upload-box" style="padding:32px 24px;margin-bottom:16px;">
+      <input type="file" id="modal-cape-file" accept="image/png,image/gif" onchange="handleModalFile(event)">
+      <div style="font-size:36px;margin-bottom:10px;">🎨</div>
+      <div style="font-family:'Syne',sans-serif;font-weight:700;font-size:16px;color:var(--white);margin-bottom:6px;">Kliknij lub przeciągnij plik</div>
+      <div style="font-size:13px;color:var(--muted);">PNG lub GIF · Max 2MB</div>
+    </div>
+
+    <div id="modal-preview" style="display:none;margin-bottom:16px;text-align:center;">
+      <div style="display:flex;align-items:center;justify-content:center;gap:20px;margin-bottom:10px;">
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-family:'DM Mono',monospace;">TEKSTURA</div>
+          <img id="modal-preview-img" src="" style="width:128px;height:64px;image-rendering:pixelated;image-rendering:-moz-crisp-edges;border:1px solid var(--border);border-radius:4px;background:#000;object-fit:fill;display:block;">
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--muted);margin-bottom:6px;font-family:'DM Mono',monospace;">PODGLĄD</div>
+          <canvas id="modal-cape-canvas" width="56" height="80" style="display:block;image-rendering:pixelated;border:1px solid var(--border);border-radius:4px;background:#1a1a2e;"></canvas>
+        </div>
+      </div>
+      <div id="modal-preview-info" style="font-size:12px;color:var(--cyan);font-family:'DM Mono',monospace;margin-bottom:12px;"></div>
+    </div>
+
+    <input class="txt-input" id="modal-cape-name" type="text" placeholder="Nazwa peleryny (np. Ocean Storm)" style="margin-bottom:12px;">
+    <button class="btn btn-cyan" style="width:100%;padding:13px;font-size:16px;border-radius:10px;" onclick="saveModalCape()">Zapisz pelerynę ✓</button>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -772,6 +820,26 @@ const DEFAULT_CAPES = [
 
 function getAllCapes() {
   return [...DEFAULT_CAPES, ...(DB.get('capes')||[])];
+}
+
+// Merge locally + remote capes (dedup by id)
+let remoteCapes = [];
+async function loadRemoteCapes() {
+  const fetched = await fetchGalleryFromGitHub();
+  if(!fetched) return;
+  const local = DB.get('capes')||[];
+  const localIds = new Set(local.map(c=>c.id));
+  // Add remote capes that we don't have locally
+  const newRemote = fetched.filter(c=>!localIds.has(c.id));
+  remoteCapes = newRemote;
+  renderCapes(); // re-render with remote capes included
+}
+
+function getAllCapesWithRemote() {
+  const local = DB.get('capes')||[];
+  const localIds = new Set(local.map(c=>c.id));
+  const uniqueRemote = remoteCapes.filter(c=>!localIds.has(c.id));
+  return [...DEFAULT_CAPES, ...local, ...uniqueRemote];
 }
 
 let currentUser = DB.get('session') || null;
@@ -866,6 +934,7 @@ function renderDashboard() {
   renderCapes();
   renderProfile();
   updateActiveCapeBar();
+  loadRemoteCapes(); // async - will re-render when done
 }
 
 function switchSection(name, btn) {
@@ -876,17 +945,32 @@ function switchSection(name, btn) {
   if(name==='capes') renderCapes();
   if(name==='profile') renderProfile();
   if(name==='github') { loadGHSettings(); updateHostsBox(); }
+  if(name==='upload') {
+    initUploadBox();
+    // Reset form state
+    pendingFile = null;
+    const prev = document.getElementById('upload-preview');
+    if(prev) prev.style.display='none';
+    const fi = document.getElementById('cape-file');
+    if(fi) fi.value='';
+    const ni = document.getElementById('cape-name-inp');
+    if(ni) ni.value='';
+    const {owner,repo} = getGHConfig();
+    const el = document.getElementById('upload-gh-status');
+    if(el) el.textContent = owner&&repo ? '✅ GitHub: '+owner+'/'+repo+' · Peleryna zostanie uploadowana automatycznie' : '⚠️ Brak konfiguracji GitHub — peleryna zapisze się tylko lokalnie';
+    if(el) el.style.color = owner&&repo ? 'var(--cyan2)' : '#ff8080';
+  }
 }
 
 function updateActiveCapeBar() {
-  const all = getAllCapes();
+  const all = getAllCapesWithRemote();
   const active = all.find(c=>c.id===currentUser?.activeCape);
   document.getElementById('acb-name').textContent = active ? active.name : 'Brak aktywnej peleryny';
 }
 
 function renderCapes() {
   const grid = document.getElementById('capes-grid');
-  const all = getAllCapes();
+  const all = getAllCapesWithRemote();
   grid.innerHTML = '';
   all.forEach(cape => {
     const isActive = currentUser?.activeCape===cape.id;
@@ -894,16 +978,17 @@ function renderCapes() {
     const card = document.createElement('div');
     card.className = 'cape-card'+(isActive?' selected':'');
 
-    let thumbStyle;
+    let thumbInner;
     if(cape.img) {
-      thumbStyle = `background:url(${cape.img}) center/cover no-repeat;width:60px;height:30px;`;
+      const canvasId = 'cvs_'+cape.id;
+      thumbInner = `<canvas id="${canvasId}" width="120" height="60"></canvas>`;
     } else {
-      thumbStyle = `background:${cape.color};`;
+      thumbInner = `<div class="cape-thumb-solid" style="background:${cape.color};border-radius:2px;"></div>`;
     }
 
     card.innerHTML = `
       ${isActive?'<div class="active-badge">✓ AKTYWNA</div>':''}
-      <div class="cape-thumb" style="${thumbStyle}"></div>
+      <div class="cape-thumb">${thumbInner}</div>
       <h4>${cape.name}</h4>
       <div class="cape-owner-tag">${cape.owner||'H2O Staff'}</div>
       ${isMine&&!cape.builtin?`<button class="cape-delete" onclick="deleteCape(event,'${cape.id}')">🗑 Usuń</button>`:''}
@@ -913,6 +998,12 @@ function renderCapes() {
       activateCape(cape.id);
     };
     grid.appendChild(card);
+
+    // Draw cape texture on canvas after DOM insert
+    if(cape.img) {
+      const canvasId = 'cvs_'+cape.id;
+      drawCapeOnCanvas(cape.img, canvasId);
+    }
   });
 }
 
@@ -923,39 +1014,61 @@ async function activateCape(id) {
   saveCurrentUser();
   renderCapes();
   updateActiveCapeBar();
-  const cape = getAllCapes().find(c=>c.id===id);
+  const cape = getAllCapesWithRemote().find(c=>c.id===id);
 
   if(!wasActive && cape) {
     toast('Aktywowano: '+cape.name+' · Synchronizuję z GitHub... 🔄');
-    // Get image - either uploaded or generate from color
-    let dataUrl = cape.img || null;
-    if(!dataUrl && cape.color) {
-      // Generate solid color PNG 64x32
-      const canvas = document.createElement('canvas');
-      canvas.width=64; canvas.height=32;
-      const ctx = canvas.getContext('2d');
-      // Draw gradient as solid color (parse from linear-gradient)
-      const colorMatch = cape.color.match(/#[0-9a-fA-F]{6}/g);
-      if(colorMatch && colorMatch.length >= 1) {
-        const grad = ctx.createLinearGradient(0,0,64,32);
-        grad.addColorStop(0, colorMatch[0]);
-        grad.addColorStop(1, colorMatch[colorMatch.length-1] || colorMatch[0]);
-        ctx.fillStyle = grad;
-      } else {
-        ctx.fillStyle = '#0077cc';
-      }
-      ctx.fillRect(0,0,64,32);
-      dataUrl = canvas.toDataURL('image/png');
-    }
+    const dataUrl = await getCapeDataUrl(cape);
     if(dataUrl) {
       const ok = await pushCapeToGitHub(currentUser.nick, dataUrl);
-      if(ok) toast('✅ '+cape.name+' aktywna · Plik commitowany do GitHub!');
-      else toast('⚠️ Cape aktywna lokalnie, błąd GitHub — sprawdź ustawienia.');
+      if(ok) toast('✅ '+cape.name+' aktywna · Gotowe!');
+      else toast('⚠️ Cape aktywna lokalnie · Błąd GitHub — sprawdź ustawienia.');
+    } else {
+      toast('✅ '+cape.name+' aktywna · Skonfiguruj GitHub aby działało z OptiFine.');
     }
   } else {
     toast('Peleryna deaktywowana.');
     removeCapeFromGitHub(currentUser.nick);
   }
+}
+
+// Get dataUrl from any cape type: base64 local, remote URL, or color gradient
+async function getCapeDataUrl(cape) {
+  // Already base64 (uploaded locally)
+  if(cape.img && cape.img.startsWith('data:')) return cape.img;
+
+  // Remote URL (from GitHub raw) — fetch and convert to base64
+  if(cape.img && cape.img.startsWith('http')) {
+    try {
+      const r = await fetch(cape.img);
+      const blob = await r.blob();
+      return await new Promise(res => {
+        const reader = new FileReader();
+        reader.onload = e => res(e.target.result);
+        reader.readAsDataURL(blob);
+      });
+    } catch(e) { return null; }
+  }
+
+  // Built-in color gradient — generate 64x32 PNG
+  if(cape.color) {
+    const canvas = document.createElement('canvas');
+    canvas.width=64; canvas.height=32;
+    const ctx = canvas.getContext('2d');
+    const colorMatch = cape.color.match(/#[0-9a-fA-F]{6}/g);
+    if(colorMatch && colorMatch.length >= 1) {
+      const grad = ctx.createLinearGradient(0,0,64,32);
+      grad.addColorStop(0, colorMatch[0]);
+      grad.addColorStop(1, colorMatch[colorMatch.length-1] || colorMatch[0]);
+      ctx.fillStyle = grad;
+    } else {
+      ctx.fillStyle = '#0077cc';
+    }
+    ctx.fillRect(0,0,64,32);
+    return canvas.toDataURL('image/png');
+  }
+
+  return null;
 }
 
 function deleteCape(e, id) {
@@ -977,14 +1090,18 @@ function saveCurrentUser() {
 }
 
 // ── UPLOAD ──
-const ub = document.getElementById('upload-box');
-ub.addEventListener('dragover', e=>{ e.preventDefault(); ub.classList.add('dragover'); });
-ub.addEventListener('dragleave', ()=>ub.classList.remove('dragover'));
-ub.addEventListener('drop', e=>{
-  e.preventDefault(); ub.classList.remove('dragover');
-  const file = e.dataTransfer.files[0];
-  if(file) { const inp=document.getElementById('cape-file'); const dt=new DataTransfer(); dt.items.add(file); inp.files=dt.files; handleFileSelect({target:inp}); }
-});
+function initUploadBox() {
+  const ub = document.getElementById('upload-box');
+  if(!ub || ub._init) return;
+  ub._init = true;
+  ub.addEventListener('dragover', e=>{ e.preventDefault(); ub.classList.add('dragover'); });
+  ub.addEventListener('dragleave', ()=>ub.classList.remove('dragover'));
+  ub.addEventListener('drop', e=>{
+    e.preventDefault(); ub.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if(file) { const inp=document.getElementById('cape-file'); const dt=new DataTransfer(); dt.items.add(file); inp.files=dt.files; handleFileSelect({target:inp}); }
+  });
+}
 
 function handleFileSelect(e) {
   const file = e.target.files[0];
@@ -995,14 +1112,16 @@ function handleFileSelect(e) {
     const img = new Image();
     img.onload = () => {
       const w=img.naturalWidth, h=img.naturalHeight;
-      if(w!==h*2) {
-        toast('❌ Błędny format! Wymagane 2:1 (szerokość = 2 × wysokość)');
-        document.getElementById('cape-file').value='';
-        return;
-      }
-      pendingFile = { dataUrl:ev.target.result, w, h };
-      document.getElementById('preview-img').src = ev.target.result;
-      document.getElementById('preview-info').textContent = `${w}×${h}px · ${(file.size/1024).toFixed(1)}KB · ✓ Format 2:1 OK`;
+      // Rescale to 128x64 nearest-neighbor
+      const cvs = document.createElement('canvas');
+      cvs.width = 64; cvs.height = 32;
+      const ctx2 = cvs.getContext('2d');
+      ctx2.imageSmoothingEnabled = false;
+      ctx2.drawImage(img, 0, 0, 64, 32);
+      const scaled = cvs.toDataURL('image/png');
+      pendingFile = { dataUrl: scaled, w: 64, h: 32 };
+      document.getElementById('preview-img').src = scaled;
+      document.getElementById('preview-info').textContent = `${w}×${h}px → 64×32px · ✓`;
       document.getElementById('upload-preview').style.display='block';
       toast('Plik zaakceptowany ✓');
     };
@@ -1011,21 +1130,89 @@ function handleFileSelect(e) {
   reader.readAsDataURL(file);
 }
 
-function saveCape() {
+async function saveCape() {
   if(!pendingFile) { toast('Najpierw wybierz plik!'); return; }
   const name = document.getElementById('cape-name-inp').value.trim();
   if(!name) { toast('Wpisz nazwę peleryny!'); return; }
+
+  const id = 'c_'+Date.now();
+  const cape = { id, name, img:pendingFile.dataUrl, owner:currentUser.nick, addedAt:Date.now() };
+
+  // Save locally
   const capes = DB.get('capes')||[];
-  capes.push({ id:'c_'+Date.now(), name, img:pendingFile.dataUrl, owner:currentUser.nick, addedAt:Date.now() });
+  capes.push(cape);
   DB.set('capes', capes);
+
+  // Push PNG to GitHub as gallery/{id}.png
+  const { owner, repo, token } = getGHConfig();
+  if(owner && repo && token) {
+    toast('Uploading do GitHub... 🔄');
+    const base64 = pendingFile.dataUrl.split(',')[1];
+    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/gallery/${id}.png`;
+    try {
+      const r = await fetch(apiUrl, {
+        method:'PUT',
+        headers:{ Authorization:'token '+token, 'Content-Type':'application/json' },
+        body: JSON.stringify({ message:`gallery: add ${name} by ${currentUser.nick}`, content: base64 })
+      });
+      if(r.ok) {
+        // Also save metadata JSON
+        await pushGalleryMeta();
+        toast('✅ "'+name+'" dodana i uploadowana do GitHub!');
+      } else {
+        toast('Peleryna zapisana lokalnie · Błąd GitHub: '+r.status);
+      }
+    } catch(e) {
+      toast('Peleryna zapisana lokalnie · Brak połączenia z GitHub');
+    }
+  } else {
+    toast('Peleryna "'+name+'" dodana! Skonfiguruj GitHub aby udostępnić innym 🎨');
+  }
+
   pendingFile=null;
   document.getElementById('upload-preview').style.display='none';
   document.getElementById('cape-file').value='';
   document.getElementById('cape-name-inp').value='';
-  toast('Peleryna "'+name+'" dodana! 🎨');
-  // Switch to capes
   const btn = document.querySelector('.sidebar-nav button');
   switchSection('capes', btn);
+}
+
+// Push gallery metadata JSON so other players can fetch it
+async function pushGalleryMeta() {
+  const { owner, repo, token } = getGHConfig();
+  if(!owner||!repo||!token) return;
+  const capes = DB.get('capes')||[];
+  // Strip img data (too large), keep meta only
+  const meta = capes.map(c=>({ id:c.id, name:c.name, owner:c.owner, addedAt:c.addedAt }));
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(meta, null, 2))));
+  const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/gallery/meta.json`;
+  let sha = null;
+  try {
+    const check = await fetch(apiUrl, { headers:{ Authorization:'token '+token } });
+    if(check.ok) { const d=await check.json(); sha=d.sha; }
+  } catch(e){}
+  await fetch(apiUrl, {
+    method:'PUT',
+    headers:{ Authorization:'token '+token, 'Content-Type':'application/json' },
+    body: JSON.stringify({ message:'gallery: update meta', content, ...(sha?{sha}:{}) })
+  });
+}
+
+// Fetch gallery from GitHub (other players' capes)
+async function fetchGalleryFromGitHub() {
+  const { owner, repo } = getGHConfig();
+  if(!owner||!repo) return null;
+  try {
+    const r = await fetch(`https://raw.githubusercontent.com/${owner}/${repo}/main/gallery/meta.json?t=${Date.now()}`);
+    if(!r.ok) return null;
+    const meta = await r.json();
+    // For each cape in meta, get URL from GitHub raw
+    return meta.map(c=>({
+      ...c,
+      img: `https://raw.githubusercontent.com/${owner}/${repo}/main/gallery/${c.id}.png`,
+      builtin: false
+    }));
+  } catch(e) { return null; }
 }
 
 // ── PROFILE ──
@@ -1069,17 +1256,18 @@ function renderLanding() {
     }).join('');
   }
 
-  // Community capes
+  // Community capes - local + remote
   const cc = document.getElementById('community-capes');
-  if(customCapes.length === 0) {
+  const allCustom = [...customCapes, ...remoteCapes.filter(r=>!customCapes.find(c=>c.id===r.id))];
+  if(allCustom.length === 0) {
     cc.innerHTML = '<div class="empty-state">Brak peleryn — bądź pierwszy! 🌊</div>';
   } else {
-    cc.innerHTML = customCapes.map(cape => {
-      const thumbStyle = cape.img
-        ? `background:url(${cape.img}) center/cover no-repeat;`
-        : `background:${cape.color||'var(--cyan)'};`;
+    cc.innerHTML = allCustom.map(cape => {
+      const thumbInner2 = cape.img
+        ? `<img src="${cape.img}" alt="${cape.name}" style="width:100%;height:auto;image-rendering:pixelated;image-rendering:-moz-crisp-edges;display:block;">`
+        : `<div style="width:100%;height:100%;background:${cape.color||'var(--cyan)'}"></div>`;
       return `<div class="comm-cape-card">
-        <div class="comm-cape-thumb" style="${thumbStyle}"></div>
+        <div class="comm-cape-thumb" style="overflow:hidden;position:relative;">${thumbInner2}</div>
         <div class="comm-cape-name">${cape.name}</div>
         <div class="comm-cape-owner">by ${cape.owner}</div>
       </div>`;
@@ -1261,6 +1449,120 @@ function loadGHSettings() {
     setGHStatus(true, 'Połączono z ' + owner + '/' + repo);
     updateHostsBox();
   }
+}
+
+
+// ── INLINE UPLOAD MODAL ──
+let modalPendingFile = null;
+
+function openInlineUpload() {
+  const modal = document.getElementById('upload-modal');
+  modal.style.display = 'flex';
+  modalPendingFile = null;
+  document.getElementById('modal-preview').style.display = 'none';
+  document.getElementById('modal-cape-file').value = '';
+  document.getElementById('modal-cape-name').value = '';
+  initModalUpload();
+}
+
+function closeInlineUpload() {
+  document.getElementById('upload-modal').style.display = 'none';
+}
+
+// Close on backdrop click
+document.getElementById('upload-modal').addEventListener('click', function(e) {
+  if(e.target === this) closeInlineUpload();
+});
+
+function initModalUpload() {
+  const box = document.getElementById('modal-upload-box');
+  if(!box || box._init) return;
+  box._init = true;
+  box.addEventListener('dragover', e=>{ e.preventDefault(); box.classList.add('dragover'); });
+  box.addEventListener('dragleave', ()=>box.classList.remove('dragover'));
+  box.addEventListener('drop', e=>{
+    e.preventDefault(); box.classList.remove('dragover');
+    const file = e.dataTransfer.files[0];
+    if(file) {
+      const inp = document.getElementById('modal-cape-file');
+      const dt = new DataTransfer(); dt.items.add(file); inp.files = dt.files;
+      handleModalFile({target: inp});
+    }
+  });
+}
+
+function handleModalFile(e) {
+  const file = e.target.files[0];
+  if(!file) return;
+  if(file.size > 2*1024*1024) { toast('❌ Plik za duży! Max 2MB.'); return; }
+  const reader = new FileReader();
+  reader.onload = ev => {
+    const img = new Image();
+    img.onload = () => {
+      const w = img.naturalWidth, h = img.naturalHeight;
+      const cvs = document.createElement('canvas');
+      cvs.width = 64; cvs.height = 32;
+      const ctx2 = cvs.getContext('2d');
+      ctx2.imageSmoothingEnabled = false;
+      ctx2.drawImage(img, 0, 0, 64, 32);
+      const scaled = cvs.toDataURL('image/png');
+      modalPendingFile = { dataUrl: scaled, w: 64, h: 32 };
+      document.getElementById('modal-preview-img').src = scaled;
+      document.getElementById('modal-preview-info').textContent = `${w}×${h}px → 64×32px · ✓`;
+      document.getElementById('modal-preview').style.display = 'block';
+      // Draw preview on cape canvas
+      setTimeout(()=>drawCapeOnCanvas(scaled,'modal-cape-canvas'),50);
+      toast('Plik zaakceptowany ✓');
+    };
+    img.src = ev.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+async function saveModalCape() {
+  if(!modalPendingFile) { toast('Najpierw wybierz plik!'); return; }
+  const name = document.getElementById('modal-cape-name').value.trim();
+  if(!name) { toast('Wpisz nazwę peleryny!'); return; }
+
+  const id = 'c_'+Date.now();
+  const cape = { id, name, img: modalPendingFile.dataUrl, owner: currentUser.nick, addedAt: Date.now() };
+  const capes = DB.get('capes')||[];
+  capes.push(cape);
+  DB.set('capes', capes);
+
+  closeInlineUpload();
+  renderCapes();
+  toast('✅ Peleryna "'+name+'" dodana!');
+
+  // Push to GitHub in background
+  const { owner, repo, token } = getGHConfig();
+  if(owner && repo && token) {
+    const base64 = modalPendingFile.dataUrl.split(',')[1];
+    const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/gallery/${id}.png`;
+    try {
+      const r = await fetch(apiUrl, {
+        method:'PUT',
+        headers:{ Authorization:'token '+token, 'Content-Type':'application/json' },
+        body: JSON.stringify({ message:`gallery: add ${name} by ${currentUser.nick}`, content: base64 })
+      });
+      if(r.ok) { await pushGalleryMeta(); toast('☁️ "'+name+'" zsynchronizowana z GitHub!'); }
+    } catch(e) {}
+  }
+}
+
+
+// ── CAPE RENDERER ──
+function drawCapeOnCanvas(imgSrc, canvasId) {
+  const canvas = document.getElementById(canvasId);
+  if(!canvas) return;
+  const ctx = canvas.getContext('2d');
+  ctx.imageSmoothingEnabled = false;
+  const img = new Image();
+  img.onload = () => {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  };
+  img.src = imgSrc;
 }
 
 // ── INIT ──
